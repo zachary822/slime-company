@@ -191,6 +191,17 @@ be active in derived modes as well."
       (simple (slime-company--fetch-candidates-simple prefix))
       (fuzzy (slime-company--fetch-candidates-fuzzy prefix)))))
 
+(defun slime-company--simple-candidates (result)
+  "Extract candidate names from RESULT containing packages and completions.
+Older SWANK returns (NAMES COMMON-PREFIX); newer SWANK returns a
+list of (NAME FLAGS ...) entries.  Only names should be inserted."
+  (let ((packages (car result))
+        (completions (cadr result)))
+    (append packages
+            (if (stringp (cadr completions))
+                (car completions)
+              (mapcar #'car completions)))))
+
 (defun slime-company--fetch-candidates-simple (prefix)
   (let ((slime-current-thread :repl-thread)
         (package (slime-current-package))
@@ -213,10 +224,10 @@ be active in derived modes as well."
                                            (cl:lambda (p)
                                               (cl:string-downcase (cl:package-name p)))
                                            (cl:list-all-packages))))))
-                             (cl:list (cl:append packages (cl:first completions))
-                                      (cl:second completions)))
+                             (cl:list packages completions))
                   (lambda (result)
-                    (funcall callback (car result)))
+                    (funcall callback
+                             (slime-company--simple-candidates result)))
                   package)))
       (cons :async
             (lambda (callback)
